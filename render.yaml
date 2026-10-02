@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: openalgo
+    runtime: docker
+    plan: free
+    region: singapore # Closest region to India for low latency
+    envVars:
+      - key: TZ
+        value: Asia/Kolkata
+      - key: APP_MODE
+        value: standalone
+      - key: NGROK_ALLOW
+        value: "FALSE"
+      - key: CORS_ENABLED
+        value: "TRUE"
+      - key: CSRF_ENABLED
+        value: "TRUE"
+      - key: APP_KEY
+        generateValue: true
+      - key: API_KEY_PEPPER
+        generateValue: true
+      - key: HOST_SERVER
+        sync: false
+      - key: REDIRECT_URL
+        sync: false
+      - key: BROKER_API_KEY
+        sync: false
+      - key: BROKER_API_SECRET
+        sync: false
