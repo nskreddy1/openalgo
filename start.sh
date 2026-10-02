@@ -8,9 +8,40 @@ echo "[OpenAlgo] Starting up..."
 # Determine writable .env location
 ENV_FILE="/app/.env"
 
+# Auto-detect Cloud URLs (Render.com, Railway.app)
+if [ -z "$HOST_SERVER" ] || [ "$HOST_SERVER" = "http://127.0.0.1:5000" ] || [ "$HOST_SERVER" = "http://localhost:5000" ]; then
+    if [ -n "$RENDER_EXTERNAL_URL" ]; then
+        HOST_SERVER="$RENDER_EXTERNAL_URL"
+        echo "[OpenAlgo] Auto-detected Render URL: $HOST_SERVER"
+    elif [ -n "$RENDER_EXTERNAL_HOSTNAME" ]; then
+        HOST_SERVER="https://$RENDER_EXTERNAL_HOSTNAME"
+        echo "[OpenAlgo] Auto-detected Render Hostname: $HOST_SERVER"
+    elif [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+        HOST_SERVER="https://$RAILWAY_PUBLIC_DOMAIN"
+        echo "[OpenAlgo] Auto-detected Railway Domain: $HOST_SERVER"
+    fi
+fi
+
+# Auto-derive REDIRECT_URL if missing or pointing to localhost when a cloud HOST_SERVER exists
+if [ -n "$HOST_SERVER" ] && [ "$HOST_SERVER" != "http://127.0.0.1:5000" ] && [ "$HOST_SERVER" != "http://localhost:5000" ]; then
+    if [ -z "$REDIRECT_URL" ] || [[ "$REDIRECT_URL" == *"127.0.0.1"* ]] || [[ "$REDIRECT_URL" == *"localhost"* ]]; then
+        BROKER_NAME=$(echo "$REDIRECT_URL" | sed -n 's|.*/\([^/]*\)/callback.*|\1|p')
+        BROKER_NAME="${BROKER_NAME:-zerodha}"
+        REDIRECT_URL="${HOST_SERVER%/}/${BROKER_NAME}/callback"
+        echo "[OpenAlgo] Auto-configured REDIRECT_URL: $REDIRECT_URL"
+    fi
+fi
+
 # Check if .env exists, is readable, and has content (not empty)
 if [ -f "$ENV_FILE" ] && [ -r "$ENV_FILE" ] && [ -s "$ENV_FILE" ]; then
     echo "[OpenAlgo] Using existing .env file"
+    # If on cloud, ensure HOST_SERVER in existing .env is synchronized with cloud URL
+    if [ -n "$HOST_SERVER" ] && [ "$HOST_SERVER" != "http://127.0.0.1:5000" ]; then
+        sed -i "s|^HOST_SERVER *=.*|HOST_SERVER = '$HOST_SERVER'|" "$ENV_FILE" 2>/dev/null || true
+        if [ -n "$REDIRECT_URL" ]; then
+            sed -i "s|^REDIRECT_URL *=.*|REDIRECT_URL = '$REDIRECT_URL'|" "$ENV_FILE" 2>/dev/null || true
+        fi
+    fi
 else
     echo "[OpenAlgo] No .env file found or file is empty. Checking for environment variables..."
     

@@ -50,12 +50,29 @@ def get_login_rate_limit_hour() -> str:
 
 def get_host_server() -> str:
     """
-    Retrieve the host server URL.
+    Retrieve the host server URL with automatic cloud platform detection.
 
     Returns:
         str: The host server URL string.
     """
-    return os.getenv("HOST_SERVER", "http://127.0.0.1:5000")
+    host = os.getenv("HOST_SERVER", "").strip()
+    if host and host not in ("http://127.0.0.1:5000", "http://localhost:5000"):
+        return host
+
+    # Auto-detect Render.com URL
+    render_url = os.getenv("RENDER_EXTERNAL_URL", "").strip()
+    if render_url:
+        return render_url
+    render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+    if render_host:
+        return f"https://{render_host}"
+
+    # Auto-detect Railway URL
+    railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
+    if railway_domain:
+        return f"https://{railway_domain}"
+
+    return host or "http://127.0.0.1:5000"
 
 
 def build_external_url(path: str) -> str:
